@@ -165,7 +165,6 @@ class GLCanvas: public wxGLCanvas{
       init = true;
     }
 
-    // readTer(terdir);
     drawCanvas();
 
     for (int i = 0; i < example_text.Len(); i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, example_text[i]);
@@ -200,12 +199,10 @@ class GLCanvas: public wxGLCanvas{
     wxString text;
     wxPaintDC dc(this); // required for correct refreshing under MS windows
     GetClientSize(&w, &h);
-    //text.Printf("by OnPaint event handler, canvas size is %d by %d"S, w, h);
     if (DemSimulation == 1){
       Render(text);
     }
 
-    // DemSimulation = 0;
   }
 
   void DemGLCanvas::OnSize(wxSizeEvent& event)
@@ -251,7 +248,6 @@ class ToolFrame: public wxFrame
  public:
   ToolFrame(wxWindow *parent, const wxString& title, const wxPoint& pos,const wxSize& size);
 
-       //drawDot("ola");
  private:
   void OnStart(wxCommandEvent& event) {
       simulation = 1;
