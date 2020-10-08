@@ -1,86 +1,160 @@
+
 #include "wx/wx.h"
+
+// #ifndef WX_PRECOMP
+// #	include <wx/wx.h>
+// #endif
+
 #include <wx/glcanvas.h>
 #include <iostream>
 #include <wx/wx.h>
-#include <GL/glut.h>
+// не на маке #include <GL/glut.h>
+#include <GLUT/glut.h>
 #include <wx/toolbar.h>
 #include <wx/artprov.h>
 #include <wx/filedlg.h>
 #include <vector>
-#include "gdal/gdal_priv.h"
-#include "gdal/cpl_conv.h"
+// не на маке
+// #include "gdal/gdal_priv.h"
+// #include "gdal/cpl_conv.h"
+#include "gdal_priv.h"
+#include "cpl_conv.h"
 
 int update = 0;
 
 //Эта функция читает файл и сразу рисует
 void readDem(wxString dir){
    GDALAllRegister();
-    
+
     // Open the file
     GDALDataset  *dataset = (GDALDataset *) GDALOpen(dir, GA_ReadOnly);
     if( dataset == NULL ) {
       std::cout << "Failed to open" << std::endl;
       exit(1);
     }
-    
+
     // Get image metadata
     unsigned width = dataset->GetRasterXSize();
     unsigned height = dataset->GetRasterYSize();
-    
+    // printf("%i\n", width);
+    // printf("%i\n", height);
     std::cout << "Image is " << width << " x " << height << " px" << std::endl;
-    
+
     double originX, originY, pixelSizeX, pixelSizeY;
-    
+
     double geoTransform[6];
+
     if (dataset->GetGeoTransform(geoTransform) == CE_None ) {
+        // printf("%lf\n", geoTransform[0]);
+        // printf("%lf\n", geoTransform[1]);
+        // printf("%lf\n", geoTransform[2]);
+        // printf("%lf\n", geoTransform[3]);
+        // printf("%lf\n", geoTransform[4]);
+        // printf("%lf\n", geoTransform[5]);
         originX = geoTransform[0];
         originY = geoTransform[3];
         pixelSizeX = geoTransform[1];
         pixelSizeY = geoTransform[5];
+        // originX = geoTransform[1];
+        // originY = geoTransform[5];
+        // pixelSizeX = geoTransform[0];
+        // pixelSizeY = geoTransform[3];
     } else {
       std::cout << "Failed read geotransform" << std::endl;
       exit(1);
     }
-    
+
+    printf( "Driver: %s/%s\n",
+        dataset->GetDriver()->GetDescription(),
+        dataset->GetDriver()->GetMetadataItem( GDAL_DMD_LONGNAME ) );
+    printf( "Size is %dx%dx%d\n",
+        dataset->GetRasterXSize(), dataset->GetRasterYSize(),
+        dataset->GetRasterCount() );
+
+    // if( dataset->GetProjectionRef()  != NULL )
+    //   printf( "Projection is `%s'\n", dataset->GetProjectionRef() );
+
+    // printf("%f\n", originX);
+    // printf("%f\n", originY);
+
     std::cout << "Origin: " << originX << ", " << originY << " degrees" << std::endl;
-    std::cout << "Pixel size: " << pixelSizeX << ", " << pixelSizeY << " degrees" << std::endl; 
-    
+    std::cout << "Pixel size: " << pixelSizeX << ", " << pixelSizeY << " degrees" << std::endl;
+
     // pixelSizeY is negative because the origin of the image is the north-east corner and positive
     // Y pixel coordinates go towards the south
-    
+
     // Get the raster band (DEM has one raster band representing elevation)
     GDALRasterBand  *elevationBand = dataset->GetRasterBand(1);
-    
+    int             nBlockXSize, nBlockYSize;
+    int             bGotMin, bGotMax;
+    double          adfMinMax[2];
+
+
     // Create an array of width*height 32-bit floats (~400MB memory)
     std::vector<float> data(width * height, 0.0f);
-   
+
     // Read the entire file into the array (you can change the options to read only a portion
     // of the file, or even scale it down if you want)
-     
-    std::cout << "Loading array..." << std::flush;
+
+    // elevationBand = dataset->GetRasterBand( 1 );
+    elevationBand->GetBlockSize( &nBlockXSize, &nBlockYSize );
+
+    printf( "Block=%dx%d Type=%s, ColorInterp=%s\n",
+        nBlockXSize, nBlockYSize,
+        GDALGetDataTypeName(elevationBand->GetRasterDataType()),
+        GDALGetColorInterpretationName(
+            elevationBand->GetColorInterpretation()) );
+    adfMinMax[0] = elevationBand->GetMinimum( &bGotMin );
+    adfMinMax[1] = elevationBand->GetMaximum( &bGotMax );
+    if( ! (bGotMin && bGotMax) )
+        GDALComputeRasterMinMax((GDALRasterBandH)elevationBand, TRUE, adfMinMax);
+    printf( "Min=%.3fd, Max=%.3f\n", adfMinMax[0], adfMinMax[1] );
+    if( elevationBand->GetOverviewCount() > 0 )
+        printf( "Band has %d overviews.\n", elevationBand->GetOverviewCount() );
+    if( elevationBand->GetColorTable() != NULL )
+        printf( "Band has a color table with %d entries.\n",
+                elevationBand->GetColorTable()->GetColorEntryCount() );
+
+    std::cout << "Loading array...\n" << std::flush;
+    float *pafScanline;
+    int   nXSize = elevationBand->GetXSize();
+    int   nYSize = elevationBand->GetYSize();
+    pafScanline = (float *) CPLMalloc(sizeof(float)*nXSize);
+
+    elevationBand->RasterIO( GF_Read, 0, 0, nXSize, 1, pafScanline, nXSize, 1, GDT_Float32, 0, 0 );
+
+    for (int i =0; i < nXSize; i++){
+      printf("%f\n", pafScanline[i]);
+    }
+
+
     if (elevationBand -> RasterIO(GF_Read, 0, 0, width, height, &data[0], width, height, GDT_Float32, 0, 0)) {
         // printf("%s\n", "h");
     }
-    std::cout << "done" << std::endl;
-    
-    // Close the file
-    GDALClose(dataset); 
-    
-    // Be careful with axis order: coordinates are traditionally written in lat, lon order, but
-    // those are Y, X, respectively. 
 
+    std::cout << "done" << std::endl;
+
+    // Close the file
+    GDALClose(dataset);
+
+    // Be careful with axis order: coordinates are traditionally written in lat, lon order, but
+    // those are Y, X, respectively.
+    //
     double pointLat = 37.5000900;
     double pointLon = -121.5000000;
-    
+
+
+
     double pixelX = (pointLon - originX) / pixelSizeX;
     double pixelY = (pointLat - originY) / pixelSizeY;
-    
+
     std::cout << pointLat << "," << pointLon << " maps to pixel " << pixelX << "," << pixelY << std::endl;
-    
-    if (pixelX < 0 || pixelX > width || pixelY < 0 || pixelY > height) {
-      std::cout << "Point out of bounds!" << std::endl;
-      exit(1);
-    }
+
+    // if (pixelX < 0 || pixelX > width || pixelY < 0 || pixelY > height) {
+    //
+    //   std::cout << "Point out of bounds!" << std::endl;
+    //   exit(1);
+    // }
     //Начинает рисовать тут
     glClear(GL_COLOR_BUFFER_BIT);
     int curr_width = 800;
@@ -88,38 +162,40 @@ void readDem(wxString dir){
     int left = 0, top = 800;
     int right = 10, bottom = 790;
     double color = 0;
-    for( int w = 0; w < 10800; w = w + 108 ) {
-        for (int h = 0; h < 10800; h = h + 108){
-            //THESE FORMULAS FOR GETTING LATandLONG by pixels 
+    for( int w = 5000; w < 5100; w = w + 1 ) {
+        for (int h = 5000; h < 5100; h = h + 1){
+    // for( int w = 0; w < 10800; w = w + 108 ) {
+    //     for (int h = 0; h < 10800; h = h + 108){
+            //THESE FORMULAS FOR GETTING LATandLONG by pixels
             // double pointLatt = (w*pixelSizeX) + originX;
             // double pointLong = (h*pixelSizeY) + originY;
             //Псс, это то что тебе нужно
             //data[h + w*width] это достает высоту
             //смотри, у тебя 100х100, чтобы достать первый пиксель (1х1) это w=108 and h=108, and for (2x2) w=216 and h=216, so 108 is a step
-            // why w*width? потому что этот лист одномерный и просто скипаешь всю широту (width)  
+            // why w*width? потому что этот лист одномерный и просто скипаешь всю широту (width)
             double elev = data[h + w*width];
-            
+
             // std::cout << elev << std::endl;
 
             // setcolor(color);
-            // rectangle(left, top, right, bottom); 
+            // rectangle(left, top, right, bottom);
 
-            if (elev < 70){
+            if (elev < 3000){
               glColor3f(0.0, 0.1, 0.0);
             }
-            if (elev > 100 && elev < 200) {
+            if (elev > 3150 && elev < 3300) {
               glColor3f(0.0, 0.25, 0.0);
             }
-            if (elev > 200 && elev < 300) {
+            if (elev > 3300 && elev < 3600) {
               glColor3f(0.0, 0.5, 0.0);
             }
-            if (elev > 300 && elev < 400) {
+            if (elev > 3600 && elev < 3700) {
               glColor3f(0.0, 0.75, 0.0);
             }
-            if (elev > 400 && elev < 500) {
+            if (elev > 3700 && elev < 3800) {
               glColor3f(0.0, 1.0, 0.0);
             }
-            if (elev > 500 && elev < 600) {
+            if (elev > 3800 && elev < 3989) {
               glColor3f(0.25, 1.0, 0.25);
             }
             // if el(ev > 70 && elev < 75) {
@@ -150,18 +226,18 @@ void readDem(wxString dir){
         bottom = bottom -10;
         // std::cout << left << " " << right << " " << top << " " << bottom << std::endl;
     }
-   
 
 
-    
-   
-   
+
+
+
+
     // glBegin(GL_LINE_STRIP);
 
     //   for (int i=0; i<6; i++) {
     //     if (i%2) y = 10.0;
     //     else y = 30.0;
-    //     glVertex2f(20*i+10.0, y); 
+    //     glVertex2f(20*i+10.0, y);
     //     glVertex2f(20*i+30.0, y);
     //   }
     // glEnd();
@@ -191,10 +267,13 @@ class MyGLCanvas: public wxGLCanvas{
       InitGL();
       init = true;
     }
-    std::cout << exa << std::endl;
+    std::cout << example_text << std::endl;
     //ПОМЕНЯЙ ДИР
-    readDem("/home/arman/Downloads/USGS_NED_13_n38w122_ArcGrid/grdn38w122_13");
-    
+    // readDem("/Users/adilettuleuov/Downloads/USGS_NED_13_n38w122_ArcGrid/grdn38w122_13");
+
+    readDem("/Users/adilettuleuov/Downloads/lf19715421_US_140EVT");
+    // readDem("/Users/adilettuleuov/Downloads/terrain");
+
     for (int i = 0; i < example_text.Len(); i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, example_text[i]);
 
     // We've been drawing to the back buffer, flush the graphics pipeline and swap the back buffer to the front
@@ -213,7 +292,7 @@ class MyGLCanvas: public wxGLCanvas{
     glViewport(0, 0, (GLint) w, (GLint) h);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0, w, 0, h, -1, 1); 
+    glOrtho(0, w, 0, h, -1, 1);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glTranslated(pan_x, pan_y, 0.0);
@@ -233,7 +312,7 @@ class MyGLCanvas: public wxGLCanvas{
     }
 
     update = 1;
-    
+
   }
 
   void MyGLCanvas::OnSize(wxSizeEvent& event)
@@ -270,14 +349,14 @@ class MyGLCanvas: public wxGLCanvas{
           SetScrollbars(1,1, 800, 800, 0, 0);
       }
 };
- 
+
  class MyFrame: public wxFrame
 {
  public:
-  MyFrame(wxWindow *parent, const wxString& title, const wxPoint& pos, 
+  MyFrame(wxWindow *parent, const wxString& title, const wxPoint& pos,
           const wxSize& size);
  private:
-  void OnExit(wxCommandEvent& event) { Close(true); }   
+  void OnExit(wxCommandEvent& event) { Close(true); }
   void OnButton1(wxCommandEvent& event) {
        std::cout << "Button 1 Pressed" << std::endl;
        readDem("ola");
@@ -292,12 +371,12 @@ class MyGLCanvas: public wxGLCanvas{
           return;     // the user changed idea...
        readDem(openFileDialog.GetDirectory());
        std::cout << "File chosen="  << openFileDialog.GetDirectory() << std::endl;
-      
+
   }
 
   DECLARE_EVENT_TABLE()
 };
-    
+
 BEGIN_EVENT_TABLE(MyFrame, wxFrame)
   EVT_MENU(wxID_EXIT, MyFrame::OnExit)
   EVT_BUTTON(1, MyFrame::OnButton1)
@@ -305,13 +384,13 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
   EVT_TOOL(4,MyFrame::FilePicker)
   EVT_TOOL(6,MyFrame::OnExit)
 END_EVENT_TABLE()
-  
-MyFrame::MyFrame(wxWindow *parent, const wxString& title, const wxPoint& pos, 
+
+MyFrame::MyFrame(wxWindow *parent, const wxString& title, const wxPoint& pos,
          const wxSize& size):
   wxFrame(parent, wxID_ANY, title, pos, size)
 {
   wxMenu *fileMenu = new wxMenu;
-  // The '&' in the next line underlines the succeeding character 
+  // The '&' in the next line underlines the succeeding character
   fileMenu->Append(wxID_EXIT,  "&Quit");
   wxMenuBar *menuBar = new wxMenuBar;
 
@@ -319,11 +398,11 @@ MyFrame::MyFrame(wxWindow *parent, const wxString& title, const wxPoint& pos,
   SetMenuBar(menuBar);
 
   wxBoxSizer *button_sizer = new wxBoxSizer(wxHORIZONTAL);
-  button_sizer->Add(new wxButton(this, 1,  "Fire"), 0, 
+  button_sizer->Add(new wxButton(this, 1,  "Fire"), 0,
                 wxALL, 10);
-  // button_sizer->Add(new wxButton(this, 2,  "button 2"), 0, 
+  // button_sizer->Add(new wxButton(this, 2,  "button 2"), 0,
   //               wxALL, 10);
-  // button_sizer->Add(new wxStaticText(this, wxID_ANY, "Some Text"), 0, 
+  // button_sizer->Add(new wxStaticText(this, wxID_ANY, "Some Text"), 0,
   //               wxTOP|wxLEFT|wxRIGHT, 10);
   SetSizer(button_sizer);
   wxToolBar *toolBar = CreateToolBar();
@@ -331,34 +410,34 @@ MyFrame::MyFrame(wxWindow *parent, const wxString& title, const wxPoint& pos,
   wxBitmap exit = wxArtProvider::GetBitmap(wxART_QUIT,wxART_TOOLBAR);
   wxBitmap save = wxArtProvider::GetBitmap(wxART_FILE_SAVE, wxART_TOOLBAR);
   wxBitmap b_new = wxArtProvider::GetBitmap(wxART_NEW,wxART_TOOLBAR);
- 
+
   toolBar->AddTool(3, "New file", b_new);
   toolBar->AddTool(4, "Open file", open);
   toolBar->AddTool(5, "Save file", save);
   toolBar->AddTool(6, "Exit", exit);
   toolBar->Realize();
 }
- 
+
 class MyApp: public wxApp
 {
     // wxFrame *frame;
   MyGLCanvas* canvas;
 public:
- 
+
     bool OnInit()
     {
         char **tmp1; int tmp2 = 0; glutInit(&tmp2, tmp1);
         wxBoxSizer* sizer = new wxBoxSizer(wxHORIZONTAL);
-        MyFrame *frame = new MyFrame(NULL,  "Testing", wxDefaultPosition, wxSize(1050, 1050));
+        MyFrame *frame = new MyFrame(NULL,  "Testing", wxDefaultPosition, wxSize(950, 950));
     //    frame = new wxFrame((wxFrame *)NULL, -1,  wxT("Scrolling an Image"), wxPoint(50,50), wxSize(650,650));
-        
+
         ScrolledImageComponent* my_image = new ScrolledImageComponent(frame, wxID_ANY );
         sizer->Add(my_image, 1, wxALL | wxEXPAND, 60);
         frame->SetSizer(sizer);
         canvas= new MyGLCanvas(my_image, wxID_ANY, wxDefaultPosition,  wxSize(800,800));
         frame->Show();
         return true;
-    } 
+    }
 };
- 
+
 IMPLEMENT_APP(MyApp)
