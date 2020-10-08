@@ -23,22 +23,7 @@
 int simulation = 0;
 std::vector<float> canvasdata(100 * 100, 0.0f);
 
-// 1. "Forest"  темно зеленый
-//  2. "Woodland":  чуть светлее зеленый
-//  3. "Grassland": салатовый
-// 4.   "Soil": коричневый
-// 5.  "Water": голубой
-// 6. "Fire": красный
 
-
-// 1: 0, 0.5, 0
-// 2: 0, 1, 0
-// 3. 0.25, 1, 0.25
-// 4: 1, 50, 25
-// 5: 0.1, 0.9, 0.9
-// 6: 1 , 0, 0
-
-// canvasdata может принимать значения от 1 до 6
 void FireSimulationStep(){
    std::vector<float> canvas_old(100 * 100, 0.0f);
    canvas_old = canvasdata;
@@ -57,11 +42,6 @@ void FireSimulationStep(){
          float neighbour3 = canvas_old[i + 100*(j-1)];
          float neighbour4 = canvas_old[i + 100*(j+1)];
 
-         // float gradient1 = (dem_data[i + 100*j] - dem_data[(i-1) + 100*j]);
-         // float gradient2 = (dem_data[i + 100*j] - dem_data[(i+1) + 100*j]);
-         // float gradient3 = (dem_data[i + 100*j] - dem_data[i + 100*(j-1)]);
-         // float gradient4 = (dem_data[i + 100*j] - dem_data[i + 100*(j+1)]);
-
          float gradient1 = 1;
          float gradient2 = 1;
          float gradient3 = 1;
@@ -69,7 +49,6 @@ void FireSimulationStep(){
 
          // если градиент положительный, то огню идти легче
          // если отрицательный, то тяжелее
-
 
          int v1 = rand() % 100;
          int fire = 0;
@@ -294,9 +273,7 @@ class ToolFrame: public wxFrame
     mouseX = (mouseX* 100)/800;
     mouseY = (mouseY * 100)/800;
     printf("Mouse Event %i %i\n", mouseX, mouseY);
-    // drawPoint();
-    // drawCanvas();
-    // update = 0;
+
  }
 
   DECLARE_EVENT_TABLE()
@@ -331,8 +308,7 @@ END_EVENT_TABLE()
 
 class MyApp: public wxApp
 {
-    // wxFrame *frame;
-    // Canvas* canvas;
+
 public:
     bool OnInit()
     {
@@ -348,14 +324,6 @@ public:
 
         toolFrame->Show();
 
-        // MyFrame *frame = new MyFrame(NULL,  "Main", wxDefaultPosition, wxSize(800, 800));
-        // // wxFrame *frame = new wxFrame((wxFrame *)NULL, -1,  wxT("Elevation map"), wxPoint(50,50), wxSize(800,800));
-        //
-        // ScrolledImageComponent* my_image = new ScrolledImageComponent(frame, wxID_ANY );
-        // sizer->Add(my_image, 1, wxALL | wxEXPAND, 60);
-        // frame->SetSizer(sizer);
-        // canvas= new Canvas(my_image, wxID_ANY, wxDefaultPosition,  wxSize(800,800));
-        // frame->Show();
 
 
 

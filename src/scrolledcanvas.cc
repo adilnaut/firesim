@@ -10,16 +10,22 @@
 #include "gdal_priv.h"
 #include "cpl_conv.h"
 
+#include <json/value.h>
+#include <json/reader.h>
+
+
+#include <fstream>
+#include <string>
+
+
 int DemSimulation = 0;
 int simulation = 0;
 int demread = 0;
 int terread = 0;
 int mouseX = -1;
 int mouseY = -1;
-wxString demdir;
-wxString terdir;
 std::vector<float> demdata(10812 * 10812, 0.0f);
-// std::vector<float> terdata(22336 * 37774, 0.0f);
+std::vector<float> terdata(22336 * 37774, 0.0f);
 std::vector<float> canvasdata(100 * 100, 0.0f);
 
 //Эта функция читает файл и сразу рисует
@@ -77,7 +83,6 @@ void readDem(wxString dir){
     GDALClose(dataset);
 }
 
-
 void readTer(wxString dir){
   GDALAllRegister();
 
@@ -100,20 +105,12 @@ void readTer(wxString dir){
   double geoTransform[6];
 
   if (dataset->GetGeoTransform(geoTransform) == CE_None ) {
-      // printf("%lf\n", geoTransform[0]);
-      // printf("%lf\n", geoTransform[1]);
-      // printf("%lf\n", geoTransform[2]);
-      // printf("%lf\n", geoTransform[3]);
-      // printf("%lf\n", geoTransform[4]);
-      // printf("%lf\n", geoTransform[5]);
+
       originX = geoTransform[0];
       originY = geoTransform[3];
       pixelSizeX = geoTransform[1];
       pixelSizeY = geoTransform[5];
-      // originX = geoTransform[1];
-      // originY = geoTransform[5];
-      // pixelSizeX = geoTransform[0];
-      // pixelSizeY = geoTransform[3];
+
   } else {
     std::cout << "Failed read geotransform" << std::endl;
     exit(1);
@@ -126,11 +123,7 @@ void readTer(wxString dir){
       dataset->GetRasterXSize(), dataset->GetRasterYSize(),
       dataset->GetRasterCount() );
 
-  // if( dataset->GetProjectionRef()  != NULL )
-  //   printf( "Projection is `%s'\n", dataset->GetProjectionRef() );
 
-  // printf("%f\n", originX);
-  // printf("%f\n", originY);
 
   std::cout << "Origin: " << originX << ", " << originY << " degrees" << std::endl;
   std::cout << "Pixel size: " << pixelSizeX << ", " << pixelSizeY << " degrees" << std::endl;
@@ -176,13 +169,12 @@ void readTer(wxString dir){
   int   nYSize = elevationBand->GetYSize();
   pafScanline = (float *) CPLMalloc(sizeof(float)*nXSize);
 
-  // elevationBand->RasterIO( GF_Read, 0, 0, nXSize, 1, pafScanline, nXSize, 1, GDT_Float32, 0, 0 );
-  //
-  // for (int i =0; i < nXSize; i++){
-  //   printf("%f\n", pafScanline[i]);
-  // }
+  elevationBand->RasterIO( GF_Read, 0, 0, nXSize, 1, pafScanline, nXSize, 1, GDT_Float32, 0, 0 );
 
-  std::vector<float> terdata(width * height, 0.0f);
+  for (int i =0; i < nXSize; i++){
+    printf("%f\n", pafScanline[i]);
+  }
+
 
   if (elevationBand -> RasterIO(GF_Read, 0, 0, width, height, &terdata[0], width, height, GDT_Float32, 0, 0)) {
       // printf("%s\n", "h");
@@ -192,17 +184,6 @@ void readTer(wxString dir){
 
   // Close the file
   GDALClose(dataset);
-
-  int i = 0;
-  for( int w = 5000; w < 6000; w = w + 10 ) {
-      for (int h = 5000; h < 6000; h = h + 10){
-        //WIDTH OF TERDATA INSTEAD OD WIDTH
-          // double elev = terdata[h + w*37774];
-          canvasdata[i] = terdata[h + w*37774];
-          i = i + 1;
-
-      }
-  }
 }
 
 void drawDem(){
@@ -220,11 +201,6 @@ void drawDem(){
             //смотри, у тебя 100х100, чтобы достать первый пиксель (1х1) это w=108 and h=108, and for (2x2) w=216 and h=216, so 108 is a step
             // why w*width? потому что этот лист одномерный и просто скипаешь всю широту (width)
             double elev = demdata[h + w*10812];
-
-            // std::cout << elev << std::endl;
-
-            // setcolor(color);
-            // rectangle(left, top, right, bottom);
 
             if (elev < 70){
               glColor3f(0.0, 0.1, 0.0);
@@ -244,21 +220,11 @@ void drawDem(){
             if (elev > 500 && elev < 600) {
               glColor3f(0.25, 1.0, 0.25);
             }
-            // if el(ev > 70 && elev < 75) {
-            //   glColor3f(0.5, 1.0, 0.5);
-            // }
-            // if (elev > 75) {
-            //   glColor3f(0.75, 1.0, 0.75);
-            // }
 
             glBegin(GL_QUADS);
-            // glTexCoord2f(0, 10);
             glVertex2f(left, top);
-            // glTexCoord2f(0, 0);
             glVertex2f(left, bottom);
-            // glTexCoord2f(10, 0);
             glVertex2f(right, bottom);
-            // glTexCoord2f(10, 10);
             glVertex2f(right, top);
             glEnd();
 
@@ -270,23 +236,10 @@ void drawDem(){
         right = 10;
         top = top - 10;
         bottom = bottom -10;
-        // std::cout << left << " " << right << " " << top << " " << bottom << std::endl;
     }
 
 
 
-
-
-
-    // glBegin(GL_LINE_STRIP);
-
-    //   for (int i=0; i<6; i++) {
-    //     if (i%2) y = 10.0;
-    //     else y = 30.0;
-    //     glVertex2f(20*i+10.0, y);
-    //     glVertex2f(20*i+30.0, y);
-    //   }
-    // glEnd();
     glColor3f(0.0, 0.0, 1.0);
     glRasterPos2f(10, 100);
 }
@@ -301,28 +254,21 @@ void drawTer(){
           //WIDTH OF TERDATA INSTEAD OD WIDTH
             double elev = terdata[h + w*37774];
             if (elev < 3000){
-              // темно зеленый
               glColor3f(0.0, 0.1, 0.0);
             }
-
             if (elev > 3150 && elev < 3300) {
-              //светло зеленый
               glColor3f(0.0, 0.25, 0.0);
             }
             if (elev > 3300 && elev < 3600) {
-              // салатовый
               glColor3f(0.0, 0.5, 0.0);
             }
             if (elev > 3600 && elev < 3700) {
-              // ярко- салатовый
               glColor3f(0.0, 0.75, 0.0);
             }
             if (elev > 3700 && elev < 3800) {
-              //черный
               glColor3f(0.0, 1.0, 0.0);
             }
             if (elev > 3800 && elev < 3989) {
-              //
               glColor3f(0.25, 1.0, 0.25);
             }
 
@@ -351,9 +297,7 @@ void drawTer(){
 }
 
 void drawPoint(){
-  printf("drawPoint\n");
   canvasdata[mouseY + mouseX*100] = 1.1;
-  DemSimulation = 1;
 }
 
 void drawCanvas(){
@@ -361,8 +305,8 @@ void drawCanvas(){
   int left = 0, top = 800;
   int right = 10, bottom = 790;
   double color = 0;
-  for( int w = 0; w < 100; w = w + 1 ) {
-    for (int h = 0; h < 100; h = h + 1){
+  for( int w = 0; w < 10800; w = w + 108 ) {
+      for (int h = 0; h < 10800; h = h + 108){
         double point = canvasdata[h + w*100];
         if (point == 1.1){
           glColor3f(1.0, 0.0, 0.0);
@@ -372,13 +316,9 @@ void drawCanvas(){
         }
 
         glBegin(GL_QUADS);
-        // glTexCoord2f(0, 10);
         glVertex2f(left, top);
-        // glTexCoord2f(0, 0);
         glVertex2f(left, bottom);
-        // glTexCoord2f(10, 0);
         glVertex2f(right, bottom);
-        // glTexCoord2f(10, 10);
         glVertex2f(right, top);
         glEnd();
 
@@ -419,13 +359,8 @@ class DemGLCanvas: public wxGLCanvas{
       init = true;
     }
     //ПОМЕНЯЙ ДИР
-    // readDem(demdir);
-    // readDemold("/home/arman/Downloads/USGS_NED_13_n38w122_ArcGrid/grdn38w122_13");
-    // drawDem();
-
-    // readTer(terdir);
-    drawCanvas();
-
+    // readDem("/home/arman/Downloads/USGS_NED_13_n38w122_ArcGrid/grdn38w122_13");
+    drawDem();
     for (int i = 0; i < example_text.Len(); i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, example_text[i]);
 
     // We've been drawing to the back buffer, flush the graphics pipeline and swap the back buffer to the front
@@ -463,7 +398,7 @@ class DemGLCanvas: public wxGLCanvas{
       Render(text);
     }
 
-    // DemSimulation = 0;
+    DemSimulation = 0;
   }
 
   void DemGLCanvas::OnSize(wxSizeEvent& event)
@@ -509,13 +444,11 @@ class TerGLCanvas: public wxGLCanvas{
   void TerGLCanvas::Render(wxString example_text) {
   SetCurrent(*context);
     if (!init) {
-      InitGL();
-      init = true;
+      // InitGL();
+      // init = true;
     }
-    printf("Arman 1\n");
     //ПОМЕНЯЙ ДИР
     // readDem("/home/arman/Downloads/USGS_NED_13_n38w122_ArcGrid/grdn38w122_13");
-    // readTer(terdir);
     drawCanvas();
     for (int i = 0; i < example_text.Len(); i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, example_text[i]);
 
@@ -550,12 +483,10 @@ class TerGLCanvas: public wxGLCanvas{
     wxPaintDC dc(this); // required for correct refreshing under MS windows
     GetClientSize(&w, &h);
     //text.Printf("by OnPaint event handler, canvas size is %d by %d"S, w, h);
-    printf("hui\n" );
     if (simulation == 1){
       Render(text);
     }
 
-    simulation = 0;
   }
 
 
@@ -599,13 +530,10 @@ class ScrolledImageComponent : public wxScrolledWindow
       const wxPoint pt = wxGetMousePosition();
       mouseX = pt.x - this->GetScreenPosition().x;
       mouseY = pt.y - this->GetScreenPosition().y;
-      mouseX = (mouseX* 100)/800;
-      mouseY = (mouseY * 100)/800;
-      printf("Mouse Event %i %i\n", mouseX, mouseY);
       drawPoint();
-      // drawCanvas();
+      drawCanvas();
       // update = 0;
-   }
+  }
   DECLARE_EVENT_TABLE()
 
 };
@@ -633,6 +561,7 @@ class ToolFrame: public wxFrame
  private:
   void OnStart(wxCommandEvent& event) {
       simulation = 1;
+      DemSimulation = 1;
        std::cout << "Button 1 Pressed" << std::endl;
   }
   void OnPause(wxCommandEvent& event) {
@@ -649,28 +578,14 @@ class ToolFrame: public wxFrame
        std::cout << "Button 2 Pressed" << std::endl;
   }
   void DemFilePicker(wxCommandEvent&  WXUNUSED(event)) {
-      // wxFileDialog openFileDialog(this, _("Open dem directory"), "", "", "", wxFD_OPEN); //|wxFD_FILE_MUST_EXIST
-      // if (openFileDialog.ShowModal() == wxID_CANCEL)
-        // return;     // the user changed idea...
-      // demdir = openFileDialog.GetDirectory();
-      demdir =  "/Users/adilettuleuov/Downloads/USGS_NED_13_n38w122_ArcGrid/grdn38w122_13";
-      terdir ="/Users/adilettuleuov/Downloads/lf19715421_US_140EVT";
-      readTer(terdir);
-      DemSimulation = 1;
-      // readDem();
-      // std::cout << "File chosen="  << openFileDialog.GetDirectory() << std::endl;
-      // drawDem();
+      //paste your terrain elevation data folder here
+      readDem("/Users/adilettuleuov/Downloads/USGS_NED_13_n38w122_ArcGrid/grdn38w122_13");
+      drawDem();
   }
   void TerFilePicker(wxCommandEvent&  WXUNUSED(event)) {
-      // wxFileDialog openFileDialog(this, _("Open terrain directory"), "", "", "", wxFD_OPEN); //|wxFD_FILE_MUST_EXIST
-      // if (openFileDialog.ShowModal() == wxID_CANCEL)
-        // return;     // the user changed idea...
-      // terdir = openFileDialog.GetDirectory();
-      terdir ="/Users/adilettuleuov/Downloads/lf19715421_US_140EVT";
-      printf("Arman 1\n");
-      simulation = 1;
-      // std::cout << "File chosen="  << openFileDialog.GetDirectory() << std::endl;
-      // drawTer();
+      // paste your Vegetation type data folder here
+      readTer("/Users/adilettuleuov/Downloads/lf19715421_US_140EVT");
+      drawTer();
   }
 
   DECLARE_EVENT_TABLE()
@@ -714,23 +629,19 @@ ToolFrame::ToolFrame(wxWindow *parent, const wxString& title, const wxPoint& pos
 
 class MyApp: public wxApp
 {
-    // wxFrame *frame;
   DemGLCanvas* canvas;
   TerGLCanvas* canvas2;
 public:
     bool OnInit()
     {
-        // wxButton* fire;
         char **tmp1; int tmp2 = 0; glutInit(&tmp2, tmp1);
         wxBoxSizer* sizer = new wxBoxSizer(wxHORIZONTAL);
         ToolFrame *toolFrame = new ToolFrame(NULL,  "Testing", wxDefaultPosition, wxSize(1050, 100));
-    //    frame = new wxFrame((wxFrame *)NULL, -1,  wxT("Scrolling an Image"), wxPoint(50,50), wxSize(650,650));
 
 
         toolFrame->Show();
 
         MyFrame *frame = new MyFrame(NULL,  "Testing", wxDefaultPosition, wxSize(800, 800));
-        // wxFrame *frame = new wxFrame((wxFrame *)NULL, -1,  wxT("Elevation map"), wxPoint(50,50), wxSize(800,800));
 
         ScrolledImageComponent* my_image = new ScrolledImageComponent(frame, wxID_ANY );
         sizer->Add(my_image, 1, wxALL | wxEXPAND, 60);
@@ -740,7 +651,6 @@ public:
 
 
         MyFrame *frame2 = new MyFrame(NULL,  "Testing", wxDefaultPosition, wxSize(800, 800));
-        // wxFrame *frame2 = new wxFrame((wxFrame *)NULL, -1,  wxT("Scrolling an Image"), wxPoint(50,50), wxSize(800,800));
 
         ScrolledImageComponent* my_image2 = new ScrolledImageComponent(frame2, wxID_ANY );
         sizer->Add(my_image2, 1, wxALL | wxEXPAND, 60);
