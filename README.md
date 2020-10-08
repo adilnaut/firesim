@@ -6,6 +6,17 @@
 
 <p> Given that such framework would adequately simulate wildfires, there is a range of possible extensions to such project like training autonomous fire-fighting agents. </p>
   
+Contact info: adilnaut@gmail.com , armansabyrov@gmail.com 
+ 
+## Installation 
+1. Install dependencies 
+   a. GDAL - https://gdal.org/download.html
+   b. GLUT - https://www.opengl.org/resources/libraries/glut/
+   c. WxWidget - https://docs.wxwidgets.org/trunk/plat_msw_install.html
+2. Download Elevation and Existing Vegetation Types data here and move to terrain_data folder:
+   UPD: because of the wxWidget bug, paste your data path directly in scrolledcanvas.cc 
+   Landfire data products - https://www.landfire.gov/index.php
+3. Run compile.sh 
   
 ## System design and architecture 
 
