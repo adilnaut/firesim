@@ -1,4 +1,4 @@
-f = open("labels.txt", "r")
+f = open("../data/labels.txt", "r")
 text = f.read()
 X = []
 Y = []

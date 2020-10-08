@@ -43,7 +43,7 @@ while(c < 10000):
     j += 1
     c += 1
 
-f = open("terrain.txt", "w")
+f = open("../data/terrain.txt", "w")
 result = ""
 print(A)
 for a in A:
