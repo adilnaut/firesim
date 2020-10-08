@@ -10,16 +10,22 @@
 #include "gdal_priv.h"
 #include "cpl_conv.h"
 
+#include <json/value.h>
+#include <json/reader.h>
+// #include "json/json.h"
+
+#include <fstream>
+#include <string>
+
+
 int DemSimulation = 0;
 int simulation = 0;
 int demread = 0;
 int terread = 0;
 int mouseX = -1;
 int mouseY = -1;
-wxString demdir;
-wxString terdir;
 std::vector<float> demdata(10812 * 10812, 0.0f);
-// std::vector<float> terdata(22336 * 37774, 0.0f);
+std::vector<float> terdata(22336 * 37774, 0.0f);
 std::vector<float> canvasdata(100 * 100, 0.0f);
 
 //Эта функция читает файл и сразу рисует
@@ -76,7 +82,6 @@ void readDem(wxString dir){
     // Close the file
     GDALClose(dataset);
 }
-
 
 void readTer(wxString dir){
   GDALAllRegister();
@@ -176,13 +181,12 @@ void readTer(wxString dir){
   int   nYSize = elevationBand->GetYSize();
   pafScanline = (float *) CPLMalloc(sizeof(float)*nXSize);
 
-  // elevationBand->RasterIO( GF_Read, 0, 0, nXSize, 1, pafScanline, nXSize, 1, GDT_Float32, 0, 0 );
-  //
-  // for (int i =0; i < nXSize; i++){
-  //   printf("%f\n", pafScanline[i]);
-  // }
+  elevationBand->RasterIO( GF_Read, 0, 0, nXSize, 1, pafScanline, nXSize, 1, GDT_Float32, 0, 0 );
 
-  std::vector<float> terdata(width * height, 0.0f);
+  for (int i =0; i < nXSize; i++){
+    printf("%f\n", pafScanline[i]);
+  }
+
 
   if (elevationBand -> RasterIO(GF_Read, 0, 0, width, height, &terdata[0], width, height, GDT_Float32, 0, 0)) {
       // printf("%s\n", "h");
@@ -192,19 +196,23 @@ void readTer(wxString dir){
 
   // Close the file
   GDALClose(dataset);
-
-  int i = 0;
-  for( int w = 5000; w < 6000; w = w + 10 ) {
-      for (int h = 5000; h < 6000; h = h + 10){
-        //WIDTH OF TERDATA INSTEAD OD WIDTH
-          // double elev = terdata[h + w*37774];
-          canvasdata[i] = terdata[h + w*37774];
-          i = i + 1;
-
-      }
-  }
 }
+    // Be careful with axis order: coordinates are traditionally written in lat, lon order, but
+    // those are Y, X, respectively.
 
+    // double pointLat = 37.5000900;
+    // double pointLon = -121.5000000;
+
+    // double pixelX = (pointLon - originX) / pixelSizeX;
+    // double pixelY = (pointLat - originY) / pixelSizeY;
+
+    // std::cout << pointLat << "," << pointLon << " maps to pixel " << pixelX << "," << pixelY << std::endl;
+
+    // if (pixelX < 0 || pixelX > width || pixelY < 0 || pixelY > height) {
+    //   std::cout << "Point out of bounds!" << std::endl;
+    //   exit(1);
+    // }
+    //Начинает рисовать тут
 void drawDem(){
     glClear(GL_COLOR_BUFFER_BIT);
     int left = 0, top = 800;
@@ -220,11 +228,6 @@ void drawDem(){
             //смотри, у тебя 100х100, чтобы достать первый пиксель (1х1) это w=108 and h=108, and for (2x2) w=216 and h=216, so 108 is a step
             // why w*width? потому что этот лист одномерный и просто скипаешь всю широту (width)
             double elev = demdata[h + w*10812];
-
-            // std::cout << elev << std::endl;
-
-            // setcolor(color);
-            // rectangle(left, top, right, bottom);
 
             if (elev < 70){
               glColor3f(0.0, 0.1, 0.0);
@@ -244,6 +247,49 @@ void drawDem(){
             if (elev > 500 && elev < 600) {
               glColor3f(0.25, 1.0, 0.25);
             }
+            // int elev_int = (int) elev;
+            //
+            // std::string s = std::to_string(elev_int);
+            // // std::cout << "log 1" << std::endl;
+            //
+            // Json::Reader reader;
+            // Json::Value labels;
+            // std::ifstream file_input("data.json");
+            // reader.parse(file_input, labels);
+            // // std::cout << elev << std::endl;
+            //
+            // // setcolor(color);
+            // // rectangle(left, top, right, bottom);
+            // try
+            // {
+            //     std::cout << labels[s].asString() << std::endl;
+            // }
+            // catch (const std::exception& err)
+            // {
+            //   std::cout << "labels[s].asString()" << std::endl;
+            //   glColor3f(1.0, 1.0 , 1.0);
+            //   continue;
+            //     // std::cout << "Error!!!" << std::endl;
+            // }
+            // if (labels[s].asString() == "Forest"){
+            //   glColor3f(0.0, 0.5, 0.0);
+            // }
+            //
+            // if (labels[s].asString() == "Woodland") {
+            //   glColor3f(0.0, 1.0, 0.0);
+            // }
+            // if (labels[s].asString() == "Grassland") {
+            //   glColor3f(0.25, 1.0, 0.25);
+            // }
+            // if (labels[s].asString() == "Soil") {
+            //   glColor3f(1.0, 0.5, 0.25);
+            // }
+            // if (labels[s].asString() == "Water") {
+            //   glColor3f(0.1, 0.9, 0.9);
+            // }
+            // else {
+            //   glColor3f(1.0, 1.0 , 1.0);
+            // }
             // if el(ev > 70 && elev < 75) {
             //   glColor3f(0.5, 1.0, 0.5);
             // }
@@ -301,28 +347,21 @@ void drawTer(){
           //WIDTH OF TERDATA INSTEAD OD WIDTH
             double elev = terdata[h + w*37774];
             if (elev < 3000){
-              // темно зеленый
               glColor3f(0.0, 0.1, 0.0);
             }
-
             if (elev > 3150 && elev < 3300) {
-              //светло зеленый
               glColor3f(0.0, 0.25, 0.0);
             }
             if (elev > 3300 && elev < 3600) {
-              // салатовый
               glColor3f(0.0, 0.5, 0.0);
             }
             if (elev > 3600 && elev < 3700) {
-              // ярко- салатовый
               glColor3f(0.0, 0.75, 0.0);
             }
             if (elev > 3700 && elev < 3800) {
-              //черный
               glColor3f(0.0, 1.0, 0.0);
             }
             if (elev > 3800 && elev < 3989) {
-              //
               glColor3f(0.25, 1.0, 0.25);
             }
 
@@ -351,9 +390,7 @@ void drawTer(){
 }
 
 void drawPoint(){
-  printf("drawPoint\n");
   canvasdata[mouseY + mouseX*100] = 1.1;
-  DemSimulation = 1;
 }
 
 void drawCanvas(){
@@ -361,8 +398,8 @@ void drawCanvas(){
   int left = 0, top = 800;
   int right = 10, bottom = 790;
   double color = 0;
-  for( int w = 0; w < 100; w = w + 1 ) {
-    for (int h = 0; h < 100; h = h + 1){
+  for( int w = 0; w < 10800; w = w + 108 ) {
+      for (int h = 0; h < 10800; h = h + 108){
         double point = canvasdata[h + w*100];
         if (point == 1.1){
           glColor3f(1.0, 0.0, 0.0);
@@ -419,13 +456,8 @@ class DemGLCanvas: public wxGLCanvas{
       init = true;
     }
     //ПОМЕНЯЙ ДИР
-    // readDem(demdir);
-    // readDemold("/home/arman/Downloads/USGS_NED_13_n38w122_ArcGrid/grdn38w122_13");
-    // drawDem();
-
-    // readTer(terdir);
-    drawCanvas();
-
+    // readDem("/home/arman/Downloads/USGS_NED_13_n38w122_ArcGrid/grdn38w122_13");
+    drawDem();
     for (int i = 0; i < example_text.Len(); i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, example_text[i]);
 
     // We've been drawing to the back buffer, flush the graphics pipeline and swap the back buffer to the front
@@ -463,7 +495,7 @@ class DemGLCanvas: public wxGLCanvas{
       Render(text);
     }
 
-    // DemSimulation = 0;
+    DemSimulation = 0;
   }
 
   void DemGLCanvas::OnSize(wxSizeEvent& event)
@@ -509,13 +541,11 @@ class TerGLCanvas: public wxGLCanvas{
   void TerGLCanvas::Render(wxString example_text) {
   SetCurrent(*context);
     if (!init) {
-      InitGL();
-      init = true;
+      // InitGL();
+      // init = true;
     }
-    printf("Arman 1\n");
     //ПОМЕНЯЙ ДИР
     // readDem("/home/arman/Downloads/USGS_NED_13_n38w122_ArcGrid/grdn38w122_13");
-    // readTer(terdir);
     drawCanvas();
     for (int i = 0; i < example_text.Len(); i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, example_text[i]);
 
@@ -550,12 +580,10 @@ class TerGLCanvas: public wxGLCanvas{
     wxPaintDC dc(this); // required for correct refreshing under MS windows
     GetClientSize(&w, &h);
     //text.Printf("by OnPaint event handler, canvas size is %d by %d"S, w, h);
-    printf("hui\n" );
     if (simulation == 1){
       Render(text);
     }
 
-    simulation = 0;
   }
 
 
@@ -599,13 +627,10 @@ class ScrolledImageComponent : public wxScrolledWindow
       const wxPoint pt = wxGetMousePosition();
       mouseX = pt.x - this->GetScreenPosition().x;
       mouseY = pt.y - this->GetScreenPosition().y;
-      mouseX = (mouseX* 100)/800;
-      mouseY = (mouseY * 100)/800;
-      printf("Mouse Event %i %i\n", mouseX, mouseY);
       drawPoint();
-      // drawCanvas();
+      drawCanvas();
       // update = 0;
-   }
+  }
   DECLARE_EVENT_TABLE()
 
 };
@@ -633,6 +658,7 @@ class ToolFrame: public wxFrame
  private:
   void OnStart(wxCommandEvent& event) {
       simulation = 1;
+      DemSimulation = 1;
        std::cout << "Button 1 Pressed" << std::endl;
   }
   void OnPause(wxCommandEvent& event) {
@@ -651,26 +677,21 @@ class ToolFrame: public wxFrame
   void DemFilePicker(wxCommandEvent&  WXUNUSED(event)) {
       // wxFileDialog openFileDialog(this, _("Open dem directory"), "", "", "", wxFD_OPEN); //|wxFD_FILE_MUST_EXIST
       // if (openFileDialog.ShowModal() == wxID_CANCEL)
-        // return;     // the user changed idea...
-      // demdir = openFileDialog.GetDirectory();
-      demdir =  "/Users/adilettuleuov/Downloads/USGS_NED_13_n38w122_ArcGrid/grdn38w122_13";
-      terdir ="/Users/adilettuleuov/Downloads/lf19715421_US_140EVT";
-      readTer(terdir);
-      DemSimulation = 1;
-      // readDem();
+      //   return;     // the user changed idea...
+      // readDem(openFileDialog.GetDirectory());
+      readDem("/Users/adilettuleuov/Downloads/USGS_NED_13_n38w122_ArcGrid/grdn38w122_13");
+      // readDem("/Users/adilettuleuov/Downloads/lf19715421_US_140EVT");
       // std::cout << "File chosen="  << openFileDialog.GetDirectory() << std::endl;
-      // drawDem();
+      drawDem();
   }
   void TerFilePicker(wxCommandEvent&  WXUNUSED(event)) {
       // wxFileDialog openFileDialog(this, _("Open terrain directory"), "", "", "", wxFD_OPEN); //|wxFD_FILE_MUST_EXIST
       // if (openFileDialog.ShowModal() == wxID_CANCEL)
-        // return;     // the user changed idea...
-      // terdir = openFileDialog.GetDirectory();
-      terdir ="/Users/adilettuleuov/Downloads/lf19715421_US_140EVT";
-      printf("Arman 1\n");
-      simulation = 1;
+      //   return;     // the user changed idea...
+      // readTer(openFileDialog.GetDirectory());
+      readTer("/Users/adilettuleuov/Downloads/lf19715421_US_140EVT");
       // std::cout << "File chosen="  << openFileDialog.GetDirectory() << std::endl;
-      // drawTer();
+      drawTer();
   }
 
   DECLARE_EVENT_TABLE()
