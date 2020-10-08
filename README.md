@@ -26,7 +26,9 @@ In the earlier stages of the project, it was also planned to use Woodland Shapef
  	
 <p> The main value of the simulation in regards to the framework for the autonomous fire-fighting models is variability of the different environment and situations which will train agents for the dealing with real-life fires. Therefore, it was decided to make fire models probabilistic and at the same time the probability was conditional to the humidity which is defined by distance to the water source and to the fire on the neighboring cells. </p>
 <p> One of the version of our fire models can be seen on the figure below: </p>
- ![figure_1](images/Figure_1.png)
+ 
+![figure_1](images/Figure_1.png)
+ 
 Picture 1. Diagram of the initial fire model.
 <p> Our next version of the fire model was designed to utilize the elevation data and vegetation type. </p>
 
