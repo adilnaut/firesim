@@ -14,7 +14,7 @@ Contact info: adilnaut@gmail.com , armansabyrov@gmail.com
    b. GLUT - https://www.opengl.org/resources/libraries/glut/ <br> 
    c. WxWidget - https://docs.wxwidgets.org/trunk/plat_msw_install.html <br>
 2. Download Elevation and Existing Vegetation Types data here and move to terrain_data folder:
-   UPD: because of the wxWidget bug, paste your data path directly in scrolledcanvas.cc 
+   UPD: because of the wxWidget bug, paste your data path directly in scrolledcanvas.cc <br>
    Landfire data products - https://www.landfire.gov/index.php
 3. Run compile.sh 
   
