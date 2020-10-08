@@ -11,6 +11,8 @@
 
 ### Terrain
 
+ ![figure_2](images/Figure_2.png)
+
 <p> In order to get convincing results of fire model, we choose two types of data to include in calculation of the fire. Those are elevation data, which is data from lidar sensors in .dem format, and shapefiles, which contains terrain information such as water, tree, ground and grass.</p>
 
 <p> DEM or digital elevation model are derived from lidar point cloud source. Point clouds are a collection of points that represent a 3D shape or feature. Each point has its own set of X, Y and Z coordinates and in some cases additional attributes. LiDAR sensors can be mounted to aerial vehicles to send laser pulses to the Earth’s surface and once the laser returns back to the sensor, the LiDAR system will record data based on information received, so to collect information about the shape of the Earth and its features. We used 1/3 arc-second precise data, which is is the highest resolution seamless DEM dataset. This data was downloaded on official website of United States Geological Survey (USGS). </p>
@@ -24,8 +26,8 @@ In the earlier stages of the project, it was also planned to use Woodland Shapef
  	
 <p> The main value of the simulation in regards to the framework for the autonomous fire-fighting models is variability of the different environment and situations which will train agents for the dealing with real-life fires. Therefore, it was decided to make fire models probabilistic and at the same time the probability was conditional to the humidity which is defined by distance to the water source and to the fire on the neighboring cells. </p>
 <p> One of the version of our fire models can be seen on the figure below: </p>
-
-	Picture 1. Diagram of the initial fire model.
+ ![figure_1](images/Figure_1.png)
+Picture 1. Diagram of the initial fire model.
 <p> Our next version of the fire model was designed to utilize the elevation data and vegetation type. </p>
 
 
